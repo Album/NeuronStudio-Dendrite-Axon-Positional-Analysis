@@ -62,6 +62,9 @@ class PositionAnalysis:
 	# outputs results to output file
 	def work(self):
 
+		import time
+		start = time.clock()
+		
 		# neurites
 		# n T x y z R P
 		for line in input.readlines():
@@ -87,8 +90,8 @@ class PositionAnalysis:
 		dendrites = [0] * len(branches)
 		axons = [0] * len(branches)
 		# print test
-		print '\nNumber of Ends:\t\t' + str(len(ends))
-		print 'Number of Branches:\t' + str(len(branches))
+		# print '\nNumber of Ends:\t\t' + str(len(ends))
+		# print 'Number of Branches:\t' + str(len(branches))
 
 		for e in ends:
 			prev = neurites[int(e)][6]
@@ -98,7 +101,15 @@ class PositionAnalysis:
 
 			i = branches.index(str(int(last)))
 			dendrites[i] += 1
-		prev = neurites[int(axon_end)][6]
+		while True:
+			try:
+				prev = neurites[int(axon_end)][6]
+				break
+			except UnboundLocalError:
+				print "The axon end could not be found. Please modify .swc file."
+				print "Locate the neurite point of the axon end and set the neurite type (second element) to 2."
+				sys.exit(1)
+				
 		while prev != '1\r\n':
 			last = prev
 			prev = self.traceback(int(prev))
@@ -107,7 +118,7 @@ class PositionAnalysis:
 		
 		# extracting cell body coordinate from neurites file
 		center = map(float, neurites[1][2:5])
-		print '\nCell body (um):\t\t' + str(center)
+		# print '\nCell body (um):\t\t' + str(center)
 		midslice = float(slice_h + slice_l) / 2
 		z_radius = ((slice_h - slice_l) / 2) * scale_actual[2]
 		# cell body image coordinates
@@ -116,13 +127,16 @@ class PositionAnalysis:
 		center[2] = center[2] / scale_default[2] + 1
 		# adjust z-center to midslice
 		center[2] = midslice
+		
 		# print test
+		'''
 		print 'Cell body (px, px, sl):\t' + str(center)
 		print 'Midslice:\t\t' + str(midslice)
 		print 'Position height (slices):\t' + str(float(slice_h - slice_l) / num_pos)
 		print 'Position height (um):\t' + str((float(slice_h - slice_l) / num_pos) * scale_actual[2])
 		print 'Z-radius (um):\t\t' + str(z_radius)
-
+		'''
+		
 		coor_swc = [0] * len(branches)
 		coor_image = [0] * len(branches)
 		coor_relative = [0] * len(branches)
@@ -151,6 +165,8 @@ class PositionAnalysis:
 			if p > num_pos:
 				p = num_pos
 
+		# Print Tests
+		''' 	
 		# print .swc coordinates
 		print '\n.swc Coordinates (pre-calculated um) '.ljust(5*width, '-')
 		for i in xrange(len(branches)):
@@ -178,8 +194,10 @@ class PositionAnalysis:
 		
 		# information on end points		
 		print '\nEndpoint Coordinates '.ljust(5*width, '-')
+		
 		for e in ends:
 			print ('Endpoint ' + e + ':').ljust(width) + '\t' + '\t'.join(map(str, neurites[int(e)][2:5]))		
+		'''
 		endpoints = [0] * len(ends)
 		end_um = [0] * len(ends)
 		end_dist = [0] * len(ends)
@@ -193,13 +211,17 @@ class PositionAnalysis:
 			end_um[i] = [((endpoints[i][j] - center[j]) * scale_actual[j]) for j in xrange(3)]
 			# distance from center
 			end_dist[i] = sqrt(pow(end_um[i][0], 2) + pow(end_um[i][1], 2) + pow(end_um[i][2], 2))
+		
+		# 	Print Test
+		'''
 		for i in xrange(len(endpoints)):
 			print endpoints[i]
 			print end_um[i]
 			print end_dist[i]
 			print 'minus xy-r: ' + str(end_dist[i] - (float(neurites[1][5])/scale_default[0]) * scale_actual[0])
 			print 'minus z-r: ' + str(end_dist[i] - z_radius)
-
+		'''
+		
 		# completed output written to file
 		#
 		# output to copy to Excel
@@ -252,7 +274,10 @@ class PositionAnalysis:
 			output.write(('\nBranch ' + branches[i] + ':').ljust(width) + '\t\t' + '\t\t'.join(map(str, coor_surface[i]))	)		
 
 		# open file for viewing in notepad++
-		os.system("start notepad++ " + output_name)
+		# os.system("start notepad++ " + output_name)
+		
+		end = time.clock()
+		print "%.2gs" % (end-start)
 		
 	# traces ends back to plotted point of origin
 	def traceback(self, n):
@@ -267,11 +292,13 @@ if __name__ == '__main__':
 	# s_l:				lowest slice in which the cell body appears
 	# s_h:				highest slice in which the cell body appears
 
+	# Running through command line
 	# ['PA.py', input, x_d, y_d, z_d, x_s, y_s, z_s, s_l, s_h]
-	PA = PositionAnalysis(sys.argv)
+	# PA = PositionAnalysis(sys.argv)
 	
+	# Running with manual input
 	# Sample run
-	# PA = PositionAnalysis(['P10.py', '5913/Image6_3.swc', 0.2, 0.2, 0.5, 0.2, 0.2, 0.5, 7, 20])
+	PA = PositionAnalysis(['P10.py', 'sample.swc', 0.142, 0.142, 0.5, 0.142, 0.142, 0.5, 15, 31])
 	
 	# counts dendrites and axons for each branch
 	# performs position analysis
