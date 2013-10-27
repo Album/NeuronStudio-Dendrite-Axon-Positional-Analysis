@@ -61,9 +61,6 @@ class PositionAnalysis:
 	# performs position analysis
 	# outputs results to output file
 	def work(self):
-
-		import time
-		start = time.clock()
 		
 		# neurites
 		# n T x y z R P
@@ -71,7 +68,6 @@ class PositionAnalysis:
 			if line.startswith('#'):
 				continue
 			neurites.append(line.split(" "))
-		
 		# correct for index at 0
 		neurites[0] = [0] * 7
 		
@@ -82,25 +78,23 @@ class PositionAnalysis:
 				ends.append(n[0])
 			if n[1] == '2':
 				axon_end = n[0]
-		
 		# find primary dendrite branches
 		for n in neurites:
 			if n[6] == '1\r\n':
 				branches.append(n[0])
 		dendrites = [0] * len(branches)
 		axons = [0] * len(branches)
-		# print test
-		# print '\nNumber of Ends:\t\t' + str(len(ends))
-		# print 'Number of Branches:\t' + str(len(branches))
 
+		# counts primary dendrites
 		for e in ends:
 			prev = neurites[int(e)][6]
 			while prev != '1\r\n':
 				last = prev
 				prev = self.traceback(int(prev))
-
 			i = branches.index(str(int(last)))
 			dendrites[i] += 1
+			
+		# assign axon value or throw exception if type unspecified
 		while True:
 			try:
 				prev = neurites[int(axon_end)][6]
@@ -108,8 +102,7 @@ class PositionAnalysis:
 			except UnboundLocalError:
 				print "The axon end could not be found. Please modify .swc file."
 				print "Locate the neurite point of the axon end and set the neurite type (second element) to 2."
-				sys.exit(1)
-				
+				sys.exit(1)		
 		while prev != '1\r\n':
 			last = prev
 			prev = self.traceback(int(prev))
@@ -127,15 +120,6 @@ class PositionAnalysis:
 		center[2] = center[2] / scale_default[2] + 1
 		# adjust z-center to midslice
 		center[2] = midslice
-		
-		# print test
-		'''
-		print 'Cell body (px, px, sl):\t' + str(center)
-		print 'Midslice:\t\t' + str(midslice)
-		print 'Position height (slices):\t' + str(float(slice_h - slice_l) / num_pos)
-		print 'Position height (um):\t' + str((float(slice_h - slice_l) / num_pos) * scale_actual[2])
-		print 'Z-radius (um):\t\t' + str(z_radius)
-		'''
 		
 		coor_swc = [0] * len(branches)
 		coor_image = [0] * len(branches)
@@ -165,39 +149,6 @@ class PositionAnalysis:
 			if p > num_pos:
 				p = num_pos
 
-		# Print Tests
-		''' 	
-		# print .swc coordinates
-		print '\n.swc Coordinates (pre-calculated um) '.ljust(5*width, '-')
-		for i in xrange(len(branches)):
-			print 'Branch ' + branches[i] + ':\t' + '\t'.join(map(str, coor_swc[i]))
-		# print image coordinates
-		print '\nImage Coordinates (px, px, slice) '.ljust(5*width, '-')
-		for i in xrange(len(branches)):
-			print 'Branch ' + branches[i] + ':\t' + '\t'.join(map(str, coor_image[i]))			
-		# print relative coordinates
-		print '\nCoordinates Relative to Center (px, px, slice) '.ljust(5*width, '-')
-		for i in xrange(len(branches)):
-			print 'Branch ' + branches[i] + ':\t' + '\t'.join(map(str, coor_relative[i]))			
-		# print micron coordinates
-		print '\nCoordinates Relative to Center (um) '.ljust(5*width, '-')
-		for i in xrange(len(branches)):
-			print 'Branch ' + branches[i] + ':\t' + '\t'.join(map(str, coor_microns[i]))			
-		# print surface coordinates
-		print '\nSurface Coordinates (Points of Origin) (um) '.ljust(5*width, '-')
-		for i in xrange(len(branches)):
-			print 'Branch ' + branches[i] + ':\t' + '\t'.join(map(str, coor_surface[i]))			
-				
-		print ('\nBranch #'.ljust(width) + 'Dendrites'.rjust(width) + 'Axons'.rjust(width) + 'Position\n'.rjust(width) + ''.ljust((4*width), '-') + '\n')
-		for i in xrange(len(branches)):
-			print (('Branch ' + branches[i]).ljust(width) + str(dendrites[i]).rjust(width) + str(axons[i]).rjust(width) + str(int(positions[i])).rjust(width) + '\n')
-		
-		# information on end points		
-		print '\nEndpoint Coordinates '.ljust(5*width, '-')
-		
-		for e in ends:
-			print ('Endpoint ' + e + ':').ljust(width) + '\t' + '\t'.join(map(str, neurites[int(e)][2:5]))		
-		'''
 		endpoints = [0] * len(ends)
 		end_um = [0] * len(ends)
 		end_dist = [0] * len(ends)
@@ -211,16 +162,6 @@ class PositionAnalysis:
 			end_um[i] = [((endpoints[i][j] - center[j]) * scale_actual[j]) for j in xrange(3)]
 			# distance from center
 			end_dist[i] = sqrt(pow(end_um[i][0], 2) + pow(end_um[i][1], 2) + pow(end_um[i][2], 2))
-		
-		# 	Print Test
-		'''
-		for i in xrange(len(endpoints)):
-			print endpoints[i]
-			print end_um[i]
-			print end_dist[i]
-			print 'minus xy-r: ' + str(end_dist[i] - (float(neurites[1][5])/scale_default[0]) * scale_actual[0])
-			print 'minus z-r: ' + str(end_dist[i] - z_radius)
-		'''
 		
 		# completed output written to file
 		#
@@ -251,33 +192,31 @@ class PositionAnalysis:
 		output.write('\nPos height (um):'.ljust(3*width) + str((float(slice_h - slice_l) / num_pos) * scale_actual[2]))
 		output.write('\nZ-radius (um):'.ljust(3*width) + str(z_radius))
 		
-		# coordinates
-		# .swc coordinates
-		output.write('\n\n.swc Coordinates (pre-calculated um) '.ljust(6*width, '-'))
-		for i in xrange(len(branches)):
-			output.write(('\nBranch ' + branches[i] + ':').ljust(width) + '\t\t' + '\t\t'.join(map(str, coor_swc[i])))
-		# image coordinates
-		output.write('\n\nImage Coordinates (px, px, slice) '.ljust(6*width, '-'))
-		for i in xrange(len(branches)):
-			output.write(('\nBranch ' + branches[i] + ':').ljust(width) + '\t\t' + '\t\t'.join(map(str, coor_image[i])))		
-		# relative coordinates
-		output.write('\n\nCoordinates Relative to Center (px, px, slice) '.ljust(5*width, '-'))
-		for i in xrange(len(branches)):
-			output.write(('\nBranch ' + branches[i] + ':').ljust(width) + '\t\t' + '\t\t'.join(map(str, coor_relative[i])))	
-		# micron coordinates
-		output.write('\n\nCoordinates Relative to Center (um) '.ljust(6*width, '-'))
-		for i in xrange(len(branches)):
-			output.write(('\nBranch ' + branches[i] + ':').ljust(width) + '\t\t' + '\t\t'.join(map(str, coor_microns[i]))	)
-		# surface coordinates
-		output.write('\n\nSurface Coordinates (Points of Origin) (um) '.ljust(6*width, '-'))
-		for i in xrange(len(branches)):
-			output.write(('\nBranch ' + branches[i] + ':').ljust(width) + '\t\t' + '\t\t'.join(map(str, coor_surface[i]))	)		
+		# output tables of coordinates
+		toPrint = []
+		headers = []
+		headers.append('\n\n.swc Coordinates (pre-calculated um) '.ljust(6*width, '-'))
+		headers.append('\n\nImage Coordinates (px, px, slice) '.ljust(6*width, '-'))
+		headers.append('\n\nCoordinates Relative to Center (px, px, slice) '.ljust(5*width, '-'))
+		headers.append('\n\nCoordinates Relative to Center (um) '.ljust(6*width, '-'))
+		headers.append('\n\nSurface Coordinates (Points of Origin) (um) '.ljust(6*width, '-'))
+
+		tabl_coor = {}
+		tabl_coor[0] = coor_swc
+		tabl_coor[1] = coor_image
+		tabl_coor[2] = coor_relative
+		tabl_coor[3] = coor_microns
+		tabl_coor[4] = coor_surface
+		
+		for j in xrange(0,5):
+			toPrint.append(headers[j])
+			for i in xrange(len(branches)):
+				toPrint.append(('\nBranch ' + branches[i] + ':').ljust(width) + '\t\t' + '\t\t'.join(map(str, tabl_coor[j][i])))
+		for line in toPrint:
+			output.write(line)
 
 		# open file for viewing in notepad++
 		# os.system("start notepad++ " + output_name)
-		
-		end = time.clock()
-		print "%.2gs" % (end-start)
 		
 	# traces ends back to plotted point of origin
 	def traceback(self, n):
@@ -298,7 +237,7 @@ if __name__ == '__main__':
 	
 	# Running with manual input
 	# Sample run
-	PA = PositionAnalysis(['P10.py', 'sample.swc', 0.142, 0.142, 0.5, 0.142, 0.142, 0.5, 15, 31])
+	# PA = PositionAnalysis(['P10.py', 'sample.swc', 0.142, 0.142, 0.5, 0.142, 0.142, 0.5, 15, 31])
 	
 	# counts dendrites and axons for each branch
 	# performs position analysis
